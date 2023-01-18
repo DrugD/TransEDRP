@@ -1,54 +1,54 @@
-# Resources:
-+ README.md: this file.
-+ data: GDSC dataset
+# TransEDRP: Dual Transformer Model with Edge Embedding for Drug Response Prediction:
 
-###  source codes:
-+ preprocess.py: create data in pytorch format
-+ utils.py: include TestbedDataset used by create_data.py to create data, performance measures and functions to draw loss, pearson by epoch.
-+ models/ginconv.py, gat.py, gat_gcn.py, and gcn.py: proposed models GINConvNet, GATNet, GAT_GCN, and GCNNet receiving graphs as input for drugs.
-+ training.py: train a GraphDRP model.
-+ saliancy_map.py: run this to get saliency value.
+Open-sourced implementation for ICML 2023 Submission
+TransEDRP is a dual transformer structure with edge embedding for drug response prediction.
+
+# Python Dependencies
+
+Our proposed TransEDRP framework is implemented in Python 3.6 and major libraries include:
+- [rdkit-pypi](https://www.rdkit.org/)    2021.9.4  
+- torch                      1.10.1
+- torch-cluster              1.5.9
+- torch-geometric            2.0.3
+- torch-scatter              2.0.9
+- torch-sparse               0.6.12
+- torch-spline-conv          1.2.1
+- torchvision                0.11.2
+
+#  To Run:
+
+Once the Python dependencies and path of datasets are fulfilled, use this command to run:
+
+1. Create data in pytorch format. Move the downloaded dataset to `../root/data/` and pre-process it with the following command:
+
+    `python project/TransEDRP/dataProcess/process_xxx.py`
+
+2. Run the following command for model training and inference (Training **TransEDRP** on **GDSCv2** dataset as an example):
+
+    `python main.py --config ../root/config/TransE/Transformer_edge_concat_GDSCv2.yaml`
 
 
-## Dependencies
-+ [Torch](https://pytorch.org/)
-+ [Pytorch_geometric](https://github.com/rusty1s/pytorch_geometric)
-+ [Rdkit](https://www.rdkit.org/)
-+ [Matplotlib](https://matplotlib.org/)
-+ [Pandas](https://pandas.pydata.org/)
-+ [Numpy](https://numpy.org/)
-+ [Scipy](https://docs.scipy.org/doc/)
+# Datasets
 
-# Step-by-step running:
+All datasets used in this paper are downloaded and the raw files are under `../root/data/` dir. The original dataset can be found here:
 
-## 1. Create data in pytorch format
-```sh
-python preprocess.py --choice 0
-```
-choice:
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0: create mixed test dataset
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1: create saliency map dataset
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2: create blind drug dataset
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;3: create blind cell dataset
+- [GDSCv1](https://www.cancerrxgene.org/downloads/anova?screening_set=GDSC1)
+- [GDSCv2](https://www.cancerrxgene.org/downloads/anova?screening_set=GDSC2)
+- [CTRPv1](https://ctd2-data.nci.nih.gov/Public/Broad/)
+- [CTRPv2](https://ctd2-data.nci.nih.gov/Public/Broad/)
+- [GCSI](https://pharmacodb.pmgenomics.ca/datasets/4)
 
-This returns file pytorch format (.pt) stored at data/processed including training, validation, test set.
+To facilitate the experiment, we package the original files of the above dataset and share file storage address at  [aliyun drive](
+https://www.aliyundrive.com/s/GWBXCnmcp3V
+) and [google drive](https://drive.google.com/file/d/1yz2Rw51cPuasnROwoHwpUSjuxOTcZsry/view?usp=share_link).
 
-## 2. Train a GraphDRP model
-```sh
-python training.py --model 0 --train_batch 1024 --val_batch 1024 --test_batch 1024 --lr 0.0001 --num_epoch 300 --log_interval 20 --cuda_name "cuda:0"
-```
-model:
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1: GINConvNet
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2: GATNet
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;3: GAT_GCN
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;4: GCNNet
+# Baselines
 
-To train a model using training data. The model is chosen if it gains the best MSE for testing data. 
+As provided in our overall experiments, all baselines and their URLs are:
 
-This returns the model and result files for the modelling achieving the best MSE for testing data throughout the training.
+- [tCNNs](https://github.com/Lowpassfilter/tCNNS-Project) : https://github.com/Lowpassfilter/tCNNS-Project
+- [DeepCDR](https://github.com/kimmo1019/DeepCDR) : https://github.com/kimmo1019/DeepCDR
+- [GraphDRP](https://github.com/hauldhut/GraphDRP) : https://github.com/hauldhut/GraphDRP
+- [GraphTransDRP](https://github.com/chuducthang77/GraTransDRP) : https://github.com/chuducthang77/GraTransDRP
+- [DeepTTC](https://github.com/jianglikun/DeepTTC) : https://github.com/jianglikun/DeepTTC
 
-## 3. Get saliency value 
-```sh
-python saliency_map.py --model 0 --num_feature 10 --processed_data_file "data/processed/GDSC_bortezomib.pt" --model_file "model_GINConvNet_GDSC.model" --cuda_name "cuda:0"
-```
-The model and model_file must be the same kind of graph neural network. This outputs most important abberations with corresponding saliency value.

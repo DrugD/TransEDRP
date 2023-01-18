@@ -267,7 +267,7 @@ def onehot_encode(char_list, smiles_string, length):
     return ans
 
 def cell_line_PanMut():
-    f = open("/home/lk/project/drug/GraphDRP_go/graphDRP0921/data/PANCANCER_Genetic_feature.csv")
+    f = open("/xxx/PANCANCER_Genetic_feature.csv")
     reader = csv.reader(f)
     next(reader)
     features = {}
@@ -372,8 +372,8 @@ import codecs
 from subword_nmt.apply_bpe import BPE
 
 def drug2emb_encoder(smile):
-    vocab_path = "/home/lk/project/drug/DeepTTC/ESPF/drug_codes_chembl_freq_1500.txt"
-    sub_csv = pd.read_csv("/home/lk/project/drug/DeepTTC/ESPF/subword_units_map_chembl_freq_1500.csv")
+    vocab_path = "/xxx/drug_codes_chembl_freq_1500.txt"
+    sub_csv = pd.read_csv("/xxx/subword_units_map_chembl_freq_1500.csv")
 
     bpe_codes_drug = codecs.open(vocab_path)
     dbpe = BPE(bpe_codes_drug, merges=-1, separator='')
@@ -517,10 +517,10 @@ def seed_torch(seed=42):
     
 def CTRP_IC50():
     seed_torch(42)
-    IC50_dir = "/home/lk/project/drug/dataset_DRP/v2/v20.data.per_cpd_post_qc.txt"
-    Cell_line_raw_dir = "/home/lk/project/drug/dataset_DRP/v2/v20.meta.per_cell_line.txt"
-    Exp_id_raw_dir = "/home/lk/project/drug/dataset_DRP/v2/v20.meta.per_experiment.txt"
-    Drug_dir = "/home/lk/project/drug/dataset_DRP/v2/v20.meta.per_compound.txt"
+    IC50_dir = "/xxx/v2/v20.data.per_cpd_post_qc.txt"
+    Cell_line_raw_dir = "/xxx/v2/v20.meta.per_cell_line.txt"
+    Exp_id_raw_dir = "/xxx/v2/v20.meta.per_experiment.txt"
+    Drug_dir = "/xxx/v2/v20.meta.per_compound.txt"
     
     with open(IC50_dir, "r") as f:  # 打开文件
         IC50_data = f.read()  # 读取文件
@@ -722,9 +722,9 @@ def CTRP_IC50():
     dataset = 'CTRPv2'
     print('preparing ', dataset + ' !')
 
-    train_data = Dataset_pan_mut(root='/home/lk/project/drug/dataset_DRP/CTRPv2_logPred', dataset=dataset+'_train', xd=xd_train, xt=xc_train, y=y_train, smile_graph=smile_graph)
-    val_data = Dataset_pan_mut(root='/home/lk/project/drug/dataset_DRP/CTRPv2_logPred', dataset=dataset+'_val', xd=xd_val, xt=xc_val,  y=y_val, smile_graph=smile_graph)
-    test_data = Dataset_pan_mut(root='/home/lk/project/drug/dataset_DRP/CTRPv2_logPred', dataset=dataset+'_test', xd=xd_test, xt=xc_test,   y=y_test, smile_graph=smile_graph)
+    train_data = Dataset_pan_mut(root='/xxx/xxx', dataset=dataset+'_train', xd=xd_train, xt=xc_train, y=y_train, smile_graph=smile_graph)
+    val_data = Dataset_pan_mut(root='/xxx/xxx', dataset=dataset+'_val', xd=xd_val, xt=xc_val,  y=y_val, smile_graph=smile_graph)
+    test_data = Dataset_pan_mut(root='/xxx/xxx', dataset=dataset+'_test', xd=xd_test, xt=xc_test,   y=y_test, smile_graph=smile_graph)
 
         
 CTRP_IC50() 

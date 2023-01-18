@@ -1,7 +1,3 @@
-'''
-_multilayer
-'''
-    
 import pdb
 from re import X
 from matplotlib.pyplot import xkcd
@@ -37,10 +33,6 @@ class Drug(nn.Module):
         if use_drug_edge:
             self.gnn1 = GATConv(
                 input_drug_feature_dim, input_drug_feature_dim, heads=10, edge_dim=input_drug_feature_dim)
-            self.gnn2 = GATConv(
-                input_drug_feature_dim, input_drug_feature_dim, heads=10, edge_dim=input_drug_feature_dim)
-            self.gnn3 = GATConv(
-                input_drug_feature_dim, input_drug_feature_dim, heads=10, edge_dim=input_drug_feature_dim)
             self.edge_embed = torch.nn.Linear(
                 input_drug_edge_dim, input_drug_feature_dim)
         else:
@@ -57,10 +49,9 @@ class Drug(nn.Module):
         self.trans_layer_2 = nn.TransformerEncoder(
             self.trans_layer_encode_2, 1)
 
-        # self.gnn2 = GCNConv(input_drug_feature_dim*10,
-        #                     input_drug_feature_dim*10)
-        self.fc_00 = torch.nn.Linear(input_drug_feature_dim*10, input_drug_feature_dim)
-        self.fc_01 = torch.nn.Linear(input_drug_feature_dim*10, input_drug_feature_dim)
+        self.gnn2 = GCNConv(input_drug_feature_dim*10,
+                            input_drug_feature_dim*10)
+
         self.fc_1 = torch.nn.Linear(input_drug_feature_dim*10*2, fc_1_dim)
         self.fc_2 = torch.nn.Linear(fc_1_dim, fc_2_dim)
 
@@ -88,22 +79,8 @@ class Drug(nn.Module):
         x = torch.unsqueeze(x, 1)
         x = self.trans_layer_2(x)
         x = torch.squeeze(x, 1)
-        x = self.fc_00(x)
-        
-        if self.use_drug_edge:
-            x = self.gnn2(x, edge_index, edge_attr=edge_embeddings)
-        else:
-            x = self.gnn2(x, edge_index)
-        
-        x = self.fc_01(x)
-        
-        if self.use_drug_edge:
-            x = self.gnn3(x, edge_index, edge_attr=edge_embeddings)
-        else:
-            x = self.gnn3(x, edge_index)
-            
-        x = self.relu(x)
-            
+
+        x = self.gnn2(x, edge_index)
         x = self.relu(x)
 
         if self.show_attenion:

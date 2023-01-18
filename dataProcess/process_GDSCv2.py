@@ -27,6 +27,160 @@ from torch_geometric.data import Batch
 from torch_geometric.data import Data
 
 
+class Dataset_pan_mut(InMemoryDataset):
+    def __init__(self, root='/tmp', dataset='davis', 
+                 xd=None, xt=None, y=None, transform=None,
+                 pre_transform=None,smile_graph=None,saliency_map=False):
+
+        #root is required for save preprocessed data, default is '/tmp'
+        super(Dataset_pan_mut, self).__init__(root, transform, pre_transform)
+        # benchmark dataset, default = 'davis'
+        self.dataset = dataset
+        self.saliency_map = saliency_map
+        
+        if os.path.isfile(self.processed_paths[0]):
+            print('Pre-processed data found: {}, loading ...'.format(self.processed_paths[0]))
+            self.data, self.slices = torch.load(self.processed_paths[0])
+        else:
+            print('Pre-processed data {} not found, doing pre-processing...'.format(self.processed_paths[0]))
+            self.process(xd, xt, y,smile_graph)
+            # self.data, self.slices = torch.load(self.processed_paths[0])
+
+    @property
+    def raw_file_names(self):
+        pass
+        #return ['some_file_1', 'some_file_2', ...]
+
+    @property
+    def processed_file_names(self):
+        return [self.dataset + '.pt']
+
+    def download(self):
+        # Download to `self.raw_dir`.
+        pass
+
+    def _download(self):
+        pass
+
+    def _process(self):
+        if not os.path.exists(self.processed_dir):
+            os.makedirs(self.processed_dir)
+
+    # Customize the process method to fit the task of drug-target affinity prediction
+    # Inputs:
+    # XD - list of SMILES, XT: list of encoded target (categorical or one-hot),
+    # Y: list of labels (i.e. affinity)
+    # Return: PyTorch-Geometric format processed data
+    def process(self, xd, xt, y,smile_graph):
+        assert (len(xd) == len(xt) and len(xt) == len(y)), "The three lists must be the same length!"
+        
+        data_list_normal = []
+        data_list_tCNN = []
+        data_list_DeepTTC = []
+        
+        data_len = len(xd)
+        
+        smiles_list = []
+        for i in range(data_len):
+            smiles_list.append(xd[i])
+        
+        smiles_list_set = set(smiles_list)
+        smiles_dict = {k:i for i,k in enumerate(smiles_list_set)}
+
+        canonical = getTCNNsMatrix(list(smiles_list_set))
+
+        print('Converting data to DATA class.')
+        for i in tqdm(range(data_len)):
+            # print('Converting SMILES to graph: {}/{}'.format(i+1, data_len))
+            smiles = xd[i]
+            target = xt[i]
+            labels = y[i]
+            tCNNs_drug_matrix = canonical[smiles_dict[smiles]]
+            # convert SMILES to molecular representation using rdkit
+            # pdb.set_trace()
+            c_size, features, edge_index, edge_attr, encode_TTC  = smile_graph[smiles]
+            
+            
+            # make the graph ready for PyTorch Geometrics GCN algorithms:
+            GCNData = DATA.Data(x=torch.Tensor(np.array(features)),            
+                                edge_index=torch.LongTensor(edge_index),
+                                edge_attr = torch.LongTensor(edge_attr),
+                                smiles = smiles,
+                                y=torch.FloatTensor([labels]))
+ 
+            # require_grad of cell-line for saliency map
+            if self.saliency_map == True:
+                GCNData.target = torch.tensor([target], dtype=torch.float, requires_grad=True)
+            else:
+                GCNData.target = torch.FloatTensor([target])
+
+            GCNData.__setitem__('c_size', torch.LongTensor([c_size]))
+            
+            # append graph, label and target sequence to data list
+            data_list_normal.append(GCNData)
+          
+            GCNData = DATA.Data(smiles = smiles,
+                                tCNNs_drug_matrix = tCNNs_drug_matrix,
+                                y=torch.FloatTensor([labels]))
+            if self.saliency_map == True:
+                GCNData.target = torch.tensor([target], dtype=torch.float, requires_grad=True)
+            else:
+                GCNData.target = torch.FloatTensor([target])
+
+            GCNData.__setitem__('c_size', torch.LongTensor([c_size]))
+
+
+            data_list_tCNN.append(GCNData)
+            
+            GCNData = DATA.Data(DeepTTC_drug_encode=torch.Tensor(encode_TTC[0]).reshape(1,-1),
+                                DeepTTC_drug_encode_mask=torch.Tensor(encode_TTC[1]).reshape(1,-1),              
+                                smiles = smiles,
+                                y=torch.FloatTensor([labels]))
+            if self.saliency_map == True:
+                GCNData.target = torch.tensor([target], dtype=torch.float, requires_grad=True)
+            else:
+                GCNData.target = torch.FloatTensor([target])
+
+            GCNData.__setitem__('c_size', torch.LongTensor([c_size]))
+
+            data_list_DeepTTC.append(GCNData)
+
+        if self.pre_filter is not None:
+            data_list_normal = [data for data in data_list_normal if self.pre_filter(data)]
+            data_list_tCNN = [data for data in data_list_tCNN if self.pre_filter(data)]
+            data_list_DeepTTC = [data for data in data_list_DeepTTC if self.pre_filter(data)]
+
+        
+
+        if self.pre_transform is not None:
+            data_list_normal = [self.pre_transform(data) for data in data_list_normal]
+            data_list_tCNN = [self.pre_transform(data) for data in data_list_tCNN]
+            data_list_DeepTTC = [self.pre_transform(data) for data in data_list_DeepTTC]
+
+        print('Graph construction done. Saving to file.')
+
+        save_root_dir = self.processed_paths[0]
+        
+        
+        
+        data, slices = self.collate(data_list_normal)
+        torch.save((data, slices), save_root_dir.split(".pt")[0]+"_normal.pt")
+
+        if len(data_list_tCNN)>50000:
+            # pdb.set_trace()
+            for index in range(3):
+                print("process tCNNs ",index)
+                data_list_tCNN_split = data_list_tCNN[index*int((len(data_list_tCNN)/3)):(index+1)*int((len(data_list_tCNN)/3))]
+                data, slices = self.collate(data_list_tCNN_split)
+                torch.save((data, slices), save_root_dir.split(".pt")[0]+"_tCNN_{}.pt".format(index))
+        else:
+            torch.save((data, slices), save_root_dir.split(".pt")[0]+"_tCNN.pt")
+
+                    
+        data, slices = self.collate(data_list_DeepTTC)
+        torch.save((data, slices), save_root_dir.split(".pt")[0]+"_DeepTTC.pt")
+    
+    
 def is_not_float(string_list):
     try:
         for string in string_list:
@@ -186,8 +340,8 @@ import codecs
 from subword_nmt.apply_bpe import BPE
 
 def drug2emb_encoder(smile):
-    vocab_path = "/media/dell/data1/LK/project/transedrp/data/data_raw/drug_codes_chembl_freq_1500.txt"
-    sub_csv = pd.read_csv("/media/dell/data1/LK/project/transedrp/data/data_raw/subword_units_map_chembl_freq_1500.csv")
+    vocab_path = "/xxx/drug_codes_chembl_freq_1500.txt"
+    sub_csv = pd.read_csv("/xxx/subword_units_map_chembl_freq_1500.csv")
 
     bpe_codes_drug = codecs.open(vocab_path)
     dbpe = BPE(bpe_codes_drug, merges=-1, separator='')
@@ -276,7 +430,7 @@ def smile_to_graph(smile):
     return c_size, features, edge_index, edge_attr, encode_TTC
 
 def load_drug_smile():
-    reader = csv.reader(open("/media/dell/data1/LK/project/transedrp/data/data_raw/GDSCv2/drug_smiles.csv"))
+    reader = csv.reader(open("/xxx/GDSCv2/drug_smiles.csv"))
     next(reader, None)
 
     drug_dict = {}
@@ -301,7 +455,7 @@ def load_drug_smile():
     return drug_dict, drug_smile, smile_graph
 
 def save_cell_mut_matrix():
-    f = open("/media/dell/data1/LK/project/transedrp/data/data_raw/PANCANCER_Genetic_feature.csv")
+    f = open("/xxx/PANCANCER_Genetic_feature.csv")
     reader = csv.reader(f)
     next(reader)
     features = {}
@@ -343,7 +497,7 @@ def save_cell_mut_matrix():
 This part is used to extract the drug - cell interaction strength. it contains IC50, AUC, Max conc, RMSE, Z_score
 """
 def save_mix_drug_cell_matrix():
-    f = open("/media/dell/data1/LK/project/transedrp/data/data_raw/GDSCv2/PANCANCER_IC.csv")
+    f = open("/xxx/GDSCv2/PANCANCER_IC.csv")
     reader = csv.reader(f)
     next(reader)
 
@@ -405,246 +559,10 @@ def save_mix_drug_cell_matrix():
     dataset = 'GDSCv2'
     print('preparing ', dataset + '_train.pt in pytorch format!')
 
-    train_data = TestbedDataset(root='/media/dell/data1/LK/project/transedrp/data', dataset=dataset+'_train', xd=xd_train, xt=xc_train, y=y_train, smile_graph=smile_graph)
-    val_data = TestbedDataset(root='/media/dell/data1/LK/project/transedrp/data', dataset=dataset+'_val', xd=xd_val, xt=xc_val, y=y_val, smile_graph=smile_graph)
-    test_data = TestbedDataset(root='/media/dell/data1/LK/project/transedrp/data', dataset=dataset+'_test', xd=xd_test, xt=xc_test, y=y_test, smile_graph=smile_graph)
+    train_data = Dataset_pan_mut(root='/xxx/data', dataset=dataset+'_train', xd=xd_train, xt=xc_train, y=y_train, smile_graph=smile_graph)
+    val_data = Dataset_pan_mut(root='/xxx/data', dataset=dataset+'_val', xd=xd_val, xt=xc_val, y=y_val, smile_graph=smile_graph)
+    test_data = Dataset_pan_mut(root='/xxx/data', dataset=dataset+'_test', xd=xd_test, xt=xc_test, y=y_test, smile_graph=smile_graph)
 
-
-def save_blind_drug_matrix():
-    f = open(folder + "PANCANCER_IC.csv")
-    reader = csv.reader(f)
-    next(reader)
-
-    cell_dict, cell_feature = save_cell_mut_matrix()
-    drug_dict, drug_smile, smile_graph = load_drug_smile()
-
-    matrix_list = []
-
-    temp_data = []
-
-    xd_train = []
-    xc_train = []
-    y_train = []
-
-    xd_val = []
-    xc_val = []
-    y_val = []
-
-    xd_test = []
-    xc_test = []
-    y_test = []
-
-    xd_unknown = []
-    xc_unknown = []
-    y_unknown = []
-
-    dict_drug_cell = {}
-
-    bExist = np.zeros((len(drug_dict), len(cell_dict)))
-
-    for item in reader:
-        drug = item[0]
-        cell = item[3]
-        ic50 = item[8]
-        ic50 = 1 / (1 + pow(math.exp(float(ic50)), -0.1))
-        
-        temp_data.append((drug, cell, ic50))
-
-    random.shuffle(temp_data)
-    
-    for data in temp_data:
-        drug, cell, ic50 = data
-        if drug in drug_dict and cell in cell_dict:
-            if drug in dict_drug_cell:
-                dict_drug_cell[drug].append((cell, ic50))
-            else:
-                dict_drug_cell[drug] = [(cell, ic50)]
-            
-            bExist[drug_dict[drug], cell_dict[cell]] = 1
-
-    lstDrugTest = []
-
-    size = int(len(dict_drug_cell) * 0.8)
-    size1 = int(len(dict_drug_cell) * 0.9)
-    pos = 0
-    for drug,values in dict_drug_cell.items():
-        pos += 1
-        for v in values:
-            cell, ic50 = v
-            if pos < size:
-                xd_train.append(drug_smile[drug_dict[drug]])
-                xc_train.append(cell_feature[cell_dict[cell]])
-                y_train.append(ic50)
-            elif pos < size1:
-                xd_val.append(drug_smile[drug_dict[drug]])
-                xc_val.append(cell_feature[cell_dict[cell]])
-                y_val.append(ic50)
-            else:
-                xd_test.append(drug_smile[drug_dict[drug]])
-                xc_test.append(cell_feature[cell_dict[cell]])
-                y_test.append(ic50)
-                lstDrugTest.append(drug)
-
-    with open('drug_bind_test', 'wb') as fp:
-        pickle.dump(lstDrugTest, fp)
-    
-    print(len(y_train), len(y_val), len(y_test))
-
-    xd_train, xc_train, y_train = np.asarray(xd_train), np.asarray(xc_train), np.asarray(y_train)
-    xd_val, xc_val, y_val = np.asarray(xd_val), np.asarray(xc_val), np.asarray(y_val)
-    xd_test, xc_test, y_test = np.asarray(xd_test), np.asarray(xc_test), np.asarray(y_test)
-
-    dataset = 'GDSC'
-    print('preparing ', dataset + '_train.pt in pytorch format!')
-    train_data = TestbedDataset(root='data', dataset=dataset+'_train_blind', xd=xd_train, xt=xc_train, y=y_train, smile_graph=smile_graph)
-    val_data = TestbedDataset(root='data', dataset=dataset+'_val_blind', xd=xd_val, xt=xc_val, y=y_val, smile_graph=smile_graph)
-    test_data = TestbedDataset(root='data', dataset=dataset+'_test_blind', xd=xd_test, xt=xc_test, y=y_test, smile_graph=smile_graph)
-
-
-def save_blind_cell_matrix():
-    f = open(folder + "PANCANCER_IC.csv")
-    reader = csv.reader(f)
-    next(reader)
-
-    cell_dict, cell_feature = save_cell_mut_matrix()
-    drug_dict, drug_smile, smile_graph = load_drug_smile()
-
-    matrix_list = []
-
-    temp_data = []
-
-    xd_train = []
-    xc_train = []
-    y_train = []
-
-    xd_val = []
-    xc_val = []
-    y_val = []
-
-    xd_test = []
-    xc_test = []
-    y_test = []
-
-    xd_unknown = []
-    xc_unknown = []
-    y_unknown = []
-
-    dict_drug_cell = {}
-
-    bExist = np.zeros((len(drug_dict), len(cell_dict)))
-
-    for item in reader:
-        drug = item[0]
-        cell = item[3]
-        ic50 = item[8]
-        ic50 = 1 / (1 + pow(math.exp(float(ic50)), -0.1))
-        
-        temp_data.append((drug, cell, ic50))
-
-    random.shuffle(temp_data)
-    
-    for data in temp_data:
-        drug, cell, ic50 = data
-        if drug in drug_dict and cell in cell_dict:
-            if cell in dict_drug_cell:
-                dict_drug_cell[cell].append((drug, ic50))
-            else:
-                dict_drug_cell[cell] = [(drug, ic50)]
-            
-            bExist[drug_dict[drug], cell_dict[cell]] = 1
-
-    lstCellTest = []
-
-    size = int(len(dict_drug_cell) * 0.8)
-    size1 = int(len(dict_drug_cell) * 0.9)
-    pos = 0
-    for cell,values in dict_drug_cell.items():
-        pos += 1
-        for v in values:
-            drug, ic50 = v
-            if pos < size:
-                xd_train.append(drug_smile[drug_dict[drug]])
-                xc_train.append(cell_feature[cell_dict[cell]])
-                y_train.append(ic50)
-            elif pos < size1:
-                xd_val.append(drug_smile[drug_dict[drug]])
-                xc_val.append(cell_feature[cell_dict[cell]])
-                y_val.append(ic50)
-            else:
-                xd_test.append(drug_smile[drug_dict[drug]])
-                xc_test.append(cell_feature[cell_dict[cell]])
-                y_test.append(ic50)
-                lstCellTest.append(cell)
-
-    with open('cell_bind_test', 'wb') as fp:
-        pickle.dump(lstCellTest, fp)
-    
-    print(len(y_train), len(y_val), len(y_test))
-
-    xd_train, xc_train, y_train = np.asarray(xd_train), np.asarray(xc_train), np.asarray(y_train)
-    xd_val, xc_val, y_val = np.asarray(xd_val), np.asarray(xc_val), np.asarray(y_val)
-    xd_test, xc_test, y_test = np.asarray(xd_test), np.asarray(xc_test), np.asarray(y_test)
-
-    dataset = 'GDSC'
-    print('preparing ', dataset + '_train.pt in pytorch format!')
-    train_data = TestbedDataset(root='data', dataset=dataset+'_train_cell_blind', xd=xd_train, xt=xc_train, y=y_train, smile_graph=smile_graph)
-    val_data = TestbedDataset(root='data', dataset=dataset+'_val_cell_blind', xd=xd_val, xt=xc_val, y=y_val, smile_graph=smile_graph)
-    test_data = TestbedDataset(root='data', dataset=dataset+'_test_cell_blind', xd=xd_test, xt=xc_test, y=y_test, smile_graph=smile_graph)
-
-def save_best_individual_drug_cell_matrix():
-    f = open(folder + "PANCANCER_IC.csv")
-    reader = csv.reader(f)
-    next(reader)
-
-    cell_dict, cell_feature = save_cell_mut_matrix()
-    drug_dict, drug_smile, smile_graph = load_drug_smile()
-
-    matrix_list = []
-
-    temp_data = []
-
-    xd_train = []
-    xc_train = []
-    y_train = []
-
-    dict_drug_cell = {}
-
-    bExist = np.zeros((len(drug_dict), len(cell_dict)))
-    i=0
-    for item in reader:
-        drug = item[0]
-        cell = item[3]
-        ic50 = item[8]
-        ic50 = 1 / (1 + pow(math.exp(float(ic50)), -0.1))
-        
-        if drug == "Bortezomib":
-            temp_data.append((drug, cell, ic50))
-    random.shuffle(temp_data)
-    
-    for data in temp_data:
-        drug, cell, ic50 = data
-        if drug in drug_dict and cell in cell_dict:
-            if drug in dict_drug_cell:
-                dict_drug_cell[drug].append((cell, ic50))
-            else:
-                dict_drug_cell[drug] = [(cell, ic50)]
-            
-            bExist[drug_dict[drug], cell_dict[cell]] = 1
-    cells = []
-    for drug,values in dict_drug_cell.items():
-        for v in values:
-            cell, ic50 = v
-            xd_train.append(drug_smile[drug_dict[drug]])
-            xc_train.append(cell_feature[cell_dict[cell]])
-            y_train.append(ic50)
-            cells.append(cell)
-
-    xd_train, xc_train, y_train = np.asarray(xd_train), np.asarray(xc_train), np.asarray(y_train)
-    with open('cell_blind_sal', 'wb') as fp:
-        pickle.dump(cells, fp)
-    dataset = 'GDSC'
-    print('preparing ', dataset + '_train.pt in pytorch format!')
-    train_data = TestbedDataset(root='data', dataset=dataset+'_bortezomib', xd=xd_train, xt=xc_train, y=y_train, smile_graph=smile_graph, saliency_map=True)
 
 def seed_torch(seed=532):
     seed = int(seed)
@@ -660,22 +578,5 @@ def seed_torch(seed=532):
     torch.backends.cudnn.enabled = False
     
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='prepare dataset to train model')
-    parser.add_argument('--choice', type=int, required=False, default=0, help='0.mix test, 1.saliency value, 2.drug blind, 3.cell blind')
-    args = parser.parse_args()
-    choice = args.choice
     seed_torch()
-    if choice == 0:
-        # save mix test dataset
-        save_mix_drug_cell_matrix()
-    elif choice == 1:
-        # save saliency map dataset
-        save_best_individual_drug_cell_matrix()
-    elif choice == 2:
-        # save blind drug dataset
-        save_blind_drug_matrix()
-    elif choice == 3:
-        # save blind cell dataset
-        save_blind_cell_matrix()
-    else:
-        print("Invalide option, choose 0 -> 4")
+    save_mix_drug_cell_matrix()

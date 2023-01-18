@@ -97,9 +97,9 @@ def main(model, config, yaml_path):
     train_dataset, val_dataset, test_dataset = config["dataset_type"]
     dataset = config["dataset_name"]
 
-    train_data = TestbedDataset(root="data", dataset=train_dataset)
-    val_data = TestbedDataset(root="data", dataset=val_dataset)
-    test_data = TestbedDataset(root="data", dataset=test_dataset)
+    train_data = TestbedDataset(root=config["dataset_root"], dataset=train_dataset)
+    val_data = TestbedDataset(root=config["dataset_root"], dataset=val_dataset)
+    test_data = TestbedDataset(root=config["dataset_root"], dataset=test_dataset)
 
     # make data PyTorch mini-batch processing ready
     train_loader = DataLoader(train_data, batch_size=train_batch, shuffle=True)

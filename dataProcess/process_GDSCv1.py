@@ -263,7 +263,7 @@ def onehot_encode(char_list, smiles_string, length):
     return ans
 
 def cell_line_PanMut():
-    f = open("/home/lk/project/drug/GraphDRP_go/graphDRP0921/data/PANCANCER_Genetic_feature.csv")
+    f = open("/xxx/PANCANCER_Genetic_feature.csv")
     reader = csv.reader(f)
     next(reader)
     features = {}
@@ -368,8 +368,8 @@ import codecs
 from subword_nmt.apply_bpe import BPE
 
 def drug2emb_encoder(smile):
-    vocab_path = "/home/lk/project/drug/DeepTTC/ESPF/drug_codes_chembl_freq_1500.txt"
-    sub_csv = pd.read_csv("/home/lk/project/drug/DeepTTC/ESPF/subword_units_map_chembl_freq_1500.csv")
+    vocab_path = "/xxx/drug_codes_chembl_freq_1500.txt"
+    sub_csv = pd.read_csv("/xxx/subword_units_map_chembl_freq_1500.csv")
 
     bpe_codes_drug = codecs.open(vocab_path)
     dbpe = BPE(bpe_codes_drug, merges=-1, separator='')
@@ -519,8 +519,8 @@ def CTRP_IC50():
     import xlrd
 
 
-    IC50_dir = "/home/lk/project/drug/dataset_DRP/GDSCv1/GDSC1_fitted_dose_response_24Jul22.xlsx"
-    Drug_dir = "/home/lk/project/drug/dataset_DRP/GDSCv1/drug_smiles.csv"
+    IC50_dir = "/xxx/GDSCv1/GDSC1_fitted_dose_response_24Jul22.xlsx"
+    Drug_dir = "/xxx/GDSCv1/drug_smiles.csv"
     
 
     wb = xlrd.open_workbook(IC50_dir)
@@ -547,7 +547,6 @@ def CTRP_IC50():
     cell_name_dict_re = {str.lower(value):key for key,value in cell_name_dict.items()}
     cell_name_dict_re_wo_ = {str.lower(key).replace("-",""):value for key,value in cell_name_dict_re.items()}
 
-    # pdb.set_trace()
     # 修改 cell_name_dict_re 的key
     cell_name_dict_re["nci-h2804"] = cell_name_dict_re.pop("h2804")
     cell_name_dict_re["nci-h2869"] = cell_name_dict_re.pop("h2869")
@@ -599,12 +598,7 @@ def CTRP_IC50():
             continue
         
         ic50 = float(value['ic50']) 
-        # print(ic50)
-        # if ic50 <0:
-        #     continue
-        # else:
-        # if drug_smile[drug_dict_lower[drug_name]] == "C1[C@@H]2CN([C@H]1CN2C3=CC=CC=N3)/C=C/C(=O)C4=CC=CC=C4O":
-        #     temp[cell_line_name] = math.exp(ic50)
+  
         ic50 = 1 / (1 + math.exp( -0.1 * float(ic50)))
         temp_data.append([
             cell_feature[cell_dict[cell_name_dict_re.get(cell_line_name)]],
@@ -613,8 +607,6 @@ def CTRP_IC50():
         ])
     
         
-    # torch.save(temp,'/home/lk/project/drug/dataset_DRP/test/pfi-3.pth')
-    pdb.set_trace()
     random.shuffle(temp_data)
     
     
@@ -649,9 +641,9 @@ def CTRP_IC50():
     dataset = 'GDSCv1'
     print('preparing ', dataset + ' !')
 
-    train_data = Dataset_pan_mut(root='/home/lk/project/drug/dataset_DRP/GDSCv1', dataset=dataset+'_train', xd=xd_train, xt=xc_train, y=y_train, smile_graph=smile_graph)
-    val_data = Dataset_pan_mut(root='/home/lk/project/drug/dataset_DRP/GDSCv1', dataset=dataset+'_val', xd=xd_val, xt=xc_val,  y=y_val, smile_graph=smile_graph)
-    test_data = Dataset_pan_mut(root='/home/lk/project/drug/dataset_DRP/GDSCv1', dataset=dataset+'_test', xd=xd_test, xt=xc_test,   y=y_test, smile_graph=smile_graph)
+    train_data = Dataset_pan_mut(root='/xxx/GDSCv1', dataset=dataset+'_train', xd=xd_train, xt=xc_train, y=y_train, smile_graph=smile_graph)
+    val_data = Dataset_pan_mut(root='/xxx/GDSCv1', dataset=dataset+'_val', xd=xd_val, xt=xc_val,  y=y_val, smile_graph=smile_graph)
+    test_data = Dataset_pan_mut(root='/xxx/GDSCv1', dataset=dataset+'_test', xd=xd_test, xt=xc_test,   y=y_test, smile_graph=smile_graph)
 
         
 CTRP_IC50() 

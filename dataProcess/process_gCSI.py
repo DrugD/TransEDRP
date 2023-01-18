@@ -265,7 +265,7 @@ def onehot_encode(char_list, smiles_string, length):
     return ans
 
 def cell_line_PanMut():
-    f = open("/home/lk/project/drug/GraphDRP_go/graphDRP0921/data/PANCANCER_Genetic_feature.csv")
+    f = open("/xxx/PANCANCER_Genetic_feature.csv")
     reader = csv.reader(f)
     next(reader)
     features = {}
@@ -370,8 +370,8 @@ import codecs
 from subword_nmt.apply_bpe import BPE
 
 def drug2emb_encoder(smile):
-    vocab_path = "/home/lk/project/drug/DeepTTC/ESPF/drug_codes_chembl_freq_1500.txt"
-    sub_csv = pd.read_csv("/home/lk/project/drug/DeepTTC/ESPF/subword_units_map_chembl_freq_1500.csv")
+    vocab_path = "/xxx/drug_codes_chembl_freq_1500.txt"
+    sub_csv = pd.read_csv("/xxx/subword_units_map_chembl_freq_1500.csv")
 
     bpe_codes_drug = codecs.open(vocab_path)
     dbpe = BPE(bpe_codes_drug, merges=-1, separator='')
@@ -462,7 +462,7 @@ def smile_to_graph(smile):
 def load_drug_smile():
     
 
-    reader = csv.reader(open("/home/lk/project/drug/dataset_DRP/gCSI/drug_smiles.csv"))
+    reader = csv.reader(open("/xxx/gCSI/drug_smiles.csv"))
     next(reader, None)
 
     drug_dict = {}
@@ -505,7 +505,7 @@ def seed_torch(seed=42):
 def CTRP_IC50():
     seed_torch(42)
     
-    IC50_dir = '/home/lk/project/drug/dataset_DRP/gCSI/output/gCSI_GRmetrics_v1.3.tsv'
+    IC50_dir = '/xxx/gCSI/output/gCSI_GRmetrics_v1.3.tsv'
 
     IC50_data = pd.read_csv(
         IC50_dir,
@@ -578,30 +578,6 @@ def CTRP_IC50():
     
     xd, xc, y = np.asarray(xd), np.asarray(xc), np.asarray(y)
     
-    # size = int(xd.shape[0] * 0.8)
-    # size1 = int(xd.shape[0] * 0.9)
-    
-    # xd_train = xd[:size]
-    # xd_val = xd[size:size1]
-    # xd_test = xd[size1:]
-
-    # xc_train = xc[:size]
-    # xc_val = xc[size:size1]
-    # xc_test = xc[size1:]
-
-    # y_train = y[:size]
-    # y_val = y[size:size1]
-    # y_test = y[size1:]
-
-    
-    # # pdb.set_trace()
-    # dataset = 'gCSI'
-    # print('preparing ', dataset + ' !')
-
-    # train_data = Dataset_pan_mut(root='/home/lk/project/drug/dataset_DRP/gCSI', dataset=dataset+'_train', xd=xd_train, xt=xc_train, y=y_train, smile_graph=smile_graph)
-    # val_data = Dataset_pan_mut(root='/home/lk/project/drug/dataset_DRP/gCSI', dataset=dataset+'_val', xd=xd_val, xt=xc_val,  y=y_val, smile_graph=smile_graph)
-    # test_data = Dataset_pan_mut(root='/home/lk/project/drug/dataset_DRP/gCSI', dataset=dataset+'_test', xd=xd_test, xt=xc_test,   y=y_test, smile_graph=smile_graph)
-
     xd_train = xd
     xc_train = xc
     y_train = y
@@ -612,7 +588,7 @@ def CTRP_IC50():
     dataset = 'gCSI'
     print('preparing ', dataset + ' !')
 
-    train_data = Dataset_pan_mut(root='/home/lk/project/drug/dataset_DRP/gCSI', dataset=dataset+'_All', xd=xd_train, xt=xc_train, y=y_train, smile_graph=smile_graph)
+    train_data = Dataset_pan_mut(root='/xxx/gCSI', dataset=dataset+'_All', xd=xd_train, xt=xc_train, y=y_train, smile_graph=smile_graph)
 
         
 CTRP_IC50() 

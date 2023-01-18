@@ -5,7 +5,7 @@ model_name: TransE
 
 cuda_name: cuda:0
 
-work_dir: TransEDRP_GDSCv2_3_layer_GE
+work_dir: test
 batch_size: 
   train: 256 
   val: 256
@@ -16,7 +16,7 @@ log_interval: 50
 seed: 171
 
 dataset_name: GDSCv2
-
+dataset_root: /home/lk/project/117graphDRP/transedrp/data
 dataset_type: 
   - GDSCv2_train_mix_useChirality
   - GDSCv2_val_mix_useChirality
