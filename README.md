@@ -1,6 +1,6 @@
 # TransEDRP: Dual Transformer Model with Edge Embedding for Drug Response Prediction:
 
-Open-sourced implementation for ICML 2023 Submission
+Open-sourced implementation for INS 2023 Submission
 TransEDRP is a dual transformer structure with edge embedding for drug response prediction.
 
 # Python Dependencies
